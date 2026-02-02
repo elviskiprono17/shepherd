@@ -5,25 +5,27 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#000000';
+const tintColorDark = '#FACC15';
 
+// Light Mode: White background, Black text, Yellow tint/accents
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
+    text: '#000000',
+    background: '#ffffff', // Reverted to white
+    tint: '#EAB308',       // Darker yellow for visibility on white
+    icon: '#000000',
     tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    tabIconSelected: '#000000',
   },
+  // Dark Mode: Black background, Yellow text/tint
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
+    text: '#ECEDEE',        // Reverted to off-white for better readability, or keep Yellow? User said "only buttons change" -> Text should likely be standard.
+    background: '#000000',
+    tint: '#FACC15',
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconSelected: '#FACC15',
   },
 };
 
