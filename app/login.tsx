@@ -14,6 +14,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
+    Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
@@ -89,7 +90,11 @@ export default function LoginScreen() {
                 <ThemedView style={styles.content}>
                     {/* Logo and Title */}
                     <View style={styles.header}>
-                        <ThemedText style={styles.logo}>🐑</ThemedText>
+                        <Image
+                            source={require('@/assets/images/shepherd-logo.png')}
+                            style={styles.logo}
+                            resizeMode="contain"
+                        />
                         <ThemedText style={styles.title}>Shepherd</ThemedText>
                         <ThemedText style={styles.subtitle}>
                             Discover fresh meme coins before everyone else
@@ -210,7 +215,8 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     logo: {
-        fontSize: 64,
+        width: 100,
+        height: 100,
         marginBottom: 16,
     },
     title: {
