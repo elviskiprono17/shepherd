@@ -106,7 +106,7 @@ export default function AlertsScreen() {
                 </View>
 
                 {/* Status Card */}
-                <View style={[styles.statusCard, { backgroundColor: isDark ? 'rgba(167, 139, 250, 0.1)' : 'rgba(167, 139, 250, 0.05)' }]}>
+                <View style={[styles.statusCard, { backgroundColor: isDark ? 'rgba(250, 204, 21, 0.1)' : 'rgba(250, 204, 21, 0.05)' }]}>
                     <ThemedText style={styles.statusEmoji}>🔔</ThemedText>
                     <View style={styles.statusText}>
                         <ThemedText style={styles.statusTitle}>Push Notifications</ThemedText>
@@ -191,7 +191,7 @@ function AlertCard({
             <Switch
                 value={alert.enabled}
                 onValueChange={() => onToggle(alert.id)}
-                trackColor={{ false: '#767577', true: '#a78bfa' }}
+                trackColor={{ false: '#767577', true: '#FACC15' }}
                 thumbColor={alert.enabled ? '#fff' : '#f4f3f4'}
             />
         </View>
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     },
     addButton: {
         borderWidth: 2,
-        borderColor: '#a78bfa',
+        borderColor: '#FACC15',
         borderStyle: 'dashed',
         marginHorizontal: 20,
         paddingVertical: 16,
@@ -296,10 +296,10 @@ const styles = StyleSheet.create({
     },
     addButtonPressed: {
         opacity: 0.7,
-        backgroundColor: 'rgba(167, 139, 250, 0.1)',
+        backgroundColor: 'rgba(250, 204, 21, 0.1)',
     },
     addButtonText: {
-        color: '#a78bfa',
+        color: '#FACC15',
         fontSize: 16,
         fontWeight: '600',
     },

@@ -161,7 +161,7 @@ export default function FiltersScreen() {
                                 <Switch
                                     value={enabled}
                                     onValueChange={() => toggleChain(chain as keyof FilterState['chains'])}
-                                    trackColor={{ false: '#767577', true: '#a78bfa' }}
+                                    trackColor={{ false: '#767577', true: '#FACC15' }}
                                     thumbColor={enabled ? '#fff' : '#f4f3f4'}
                                 />
                             </View>
@@ -229,8 +229,8 @@ const styles = StyleSheet.create({
         borderWidth: 2,
     },
     riskButtonActive: {
-        borderColor: '#a78bfa',
-        backgroundColor: 'rgba(167, 139, 250, 0.1)',
+        borderColor: '#FACC15',
+        backgroundColor: 'rgba(250, 204, 21, 0.1)',
     },
     riskEmoji: {
         fontSize: 24,
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     riskLabelActive: {
-        color: '#a78bfa',
+        color: '#FACC15',
         opacity: 1,
     },
     settingCard: {
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     settingValue: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#a78bfa',
+        color: '#FACC15',
     },
     chainCard: {
         borderRadius: 12,
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     applyButton: {
-        backgroundColor: '#a78bfa',
+        backgroundColor: '#FACC15',
         marginHorizontal: 20,
         paddingVertical: 16,
         borderRadius: 12,

@@ -321,14 +321,14 @@ const styles = StyleSheet.create({
     },
     backArrowText: {
         fontSize: 16,
-        color: '#a78bfa',
+        color: '#FACC15',
         fontWeight: '600',
     },
     backButton: {
         marginTop: 16,
         paddingHorizontal: 24,
         paddingVertical: 12,
-        backgroundColor: '#a78bfa',
+        backgroundColor: '#FACC15',
         borderRadius: 8,
     },
     backButtonText: {
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     metricValue: {
         fontSize: 18,
         fontWeight: '700',
-        color: '#a78bfa',
+        color: '#FACC15',
     },
     metricLabel: {
         fontSize: 12,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     primaryButton: {
-        backgroundColor: '#a78bfa',
+        backgroundColor: '#FACC15',
     },
     primaryButtonText: {
         color: '#fff',
@@ -514,10 +514,10 @@ const styles = StyleSheet.create({
     },
     secondaryButton: {
         borderWidth: 2,
-        borderColor: '#a78bfa',
+        borderColor: '#FACC15',
     },
     secondaryButtonText: {
-        color: '#a78bfa',
+        color: '#FACC15',
         fontSize: 16,
         fontWeight: '600',
     },
