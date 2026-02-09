@@ -18,12 +18,12 @@ export const Colors = {
     tabIconDefault: '#687076',
     tabIconSelected: '#000000',
   },
-  // Dark Mode: Black background, Yellow text/tint
+  // Dark Mode: Black background, White text, Yellow tint/accents
   dark: {
-    text: '#ECEDEE',        // Reverted to off-white for better readability, or keep Yellow? User said "only buttons change" -> Text should likely be standard.
+    text: '#ffffff',        // Pure white for maximum visibility on black
     background: '#000000',
     tint: '#FACC15',
-    icon: '#9BA1A6',
+    icon: '#ffffff',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: '#FACC15',
   },
