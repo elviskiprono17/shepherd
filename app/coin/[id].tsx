@@ -22,7 +22,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useCoin } from '@/hooks/useCoins';
 import {
     formatPrice,
@@ -35,7 +35,7 @@ import {
 
 export default function CoinDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const colorScheme = useColorScheme();
+    const { colorScheme } = useTheme();
     const isDark = colorScheme === 'dark';
 
     const { coin, loading, error } = useCoin(id || '');
