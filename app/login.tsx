@@ -115,22 +115,6 @@ export default function LoginScreen() {
                                 Continue with Google
                             </ThemedText>
                         </Pressable>
-
-                        <Pressable
-                            style={[
-                                styles.oauthButton,
-                                {
-                                    backgroundColor: isDark ? '#fff' : '#000',
-                                }
-                            ]}
-                            onPress={() => handleOAuthSignIn('apple')}
-                            disabled={loading}
-                        >
-                            <ThemedText style={[styles.oauthLogo, { color: isDark ? '#000' : '#fff' }]}></ThemedText>
-                            <ThemedText style={[styles.oauthButtonText, { color: isDark ? '#000' : '#fff' }]}>
-                                Continue with Apple
-                            </ThemedText>
-                        </Pressable>
                     </View>
 
                     {/* Divider */}

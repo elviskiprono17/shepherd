@@ -137,13 +137,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Sign in with OAuth (Google/Apple)
     const signInWithOAuth = async (provider: 'google' | 'apple') => {
         try {
-            const { error } = await supabase.auth.signInWithOAuth({
+            const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
                 options: {
+                    redirectTo: 'shepherd://auth-callback',
                     skipBrowserRedirect: true,
                 },
             });
-            return { error: error ? new Error(error.message) : null };
+
+            if (error) {
+                return { error: new Error(error.message) };
+            }
+
+            if (data?.url) {
+                // Import and use WebBrowser to open the OAuth URL
+                const WebBrowser = require('expo-web-browser');
+                const result = await WebBrowser.openAuthSessionAsync(
+                    data.url,
+                    'shepherd://auth-callback'
+                );
+
+                if (result.type === 'success' && result.url) {
+                    // Extract the session from the URL
+                    const url = new URL(result.url);
+                    const params = new URLSearchParams(url.hash.substring(1));
+                    const access_token = params.get('access_token');
+                    const refresh_token = params.get('refresh_token');
+
+                    if (access_token && refresh_token) {
+                        const { error: sessionError } = await supabase.auth.setSession({
+                            access_token,
+                            refresh_token,
+                        });
+                        if (sessionError) {
+                            return { error: new Error(sessionError.message) };
+                        }
+                    }
+                }
+            }
+
+            return { error: null };
         } catch (err) {
             return { error: err as Error };
         }
