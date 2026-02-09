@@ -80,9 +80,9 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     proButton: {
-        paddingHorizontal: 20,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: 24,
+        paddingVertical: 10,
+        borderRadius: 8,
         borderWidth: 2,
         borderStyle: 'dashed',
     },

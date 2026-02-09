@@ -46,12 +46,6 @@ export default function HomeScreen() {
       <NavHeader onToggleTheme={toggleTheme} />
 
       <ThemedView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <ThemedText style={styles.logo}>Shepherd</ThemedText>
-          <ThemedText style={styles.tagline}>Discover fresh tokens</ThemedText>
-        </View>
-
         {/* Stats Bar */}
         <View style={[styles.statsBar, { backgroundColor: colorScheme === 'dark' ? 'rgba(250, 204, 21, 0.1)' : 'rgba(250, 204, 21, 0.1)' }]}>
           <View style={styles.statItem}>
@@ -96,20 +90,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-  },
-  logo: {
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  tagline: {
-    fontSize: 14,
-    opacity: 0.6,
-  },
   statsBar: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -118,7 +98,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 8,
     borderRadius: 12,
-
   },
   statItem: {
     alignItems: 'center',
