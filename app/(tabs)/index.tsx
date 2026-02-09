@@ -21,13 +21,15 @@ import { router, Href } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { CoinList } from '@/components/CoinList';
+import { NavHeader } from '@/components/NavHeader';
 import { useCoins } from '@/hooks/useCoins';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Colors } from '@/constants/theme';
 import { Coin } from '@/types/coin';
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
+  const { colorScheme, toggleTheme } = useTheme();
+  const isDark = colorScheme === 'dark';
   const { coins, loading, error, refresh } = useCoins();
 
   // Navigate to coin detail screen when card is pressed
@@ -38,8 +40,10 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[
       styles.safeArea,
+      { backgroundColor: isDark ? '#000000' : '#ffffff' }
     ]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavHeader onToggleTheme={toggleTheme} />
 
       <ThemedView style={styles.container}>
         {/* Header */}

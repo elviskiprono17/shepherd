@@ -19,7 +19,8 @@ import { StatusBar } from 'expo-status-bar';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { NavHeader } from '@/components/NavHeader';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Alert {
     id: string;
@@ -74,7 +75,7 @@ const MOCK_ALERTS: Alert[] = [
 ];
 
 export default function AlertsScreen() {
-    const colorScheme = useColorScheme();
+    const { colorScheme, toggleTheme } = useTheme();
     const isDark = colorScheme === 'dark';
 
     const [alerts, setAlerts] = useState<Alert[]>(MOCK_ALERTS);
@@ -90,9 +91,10 @@ export default function AlertsScreen() {
     return (
         <SafeAreaView style={[
             styles.safeArea,
-            { backgroundColor: isDark ? '#0a0a0a' : '#ffffff' }
+            { backgroundColor: isDark ? '#000000' : '#ffffff' }
         ]}>
             <StatusBar style={isDark ? 'light' : 'dark'} />
+            <NavHeader onToggleTheme={toggleTheme} />
 
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 {/* Header */}

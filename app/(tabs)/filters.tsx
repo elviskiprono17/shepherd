@@ -20,9 +20,10 @@ import { StatusBar } from 'expo-status-bar';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { NavHeader } from '@/components/NavHeader';
+import { useTheme } from '@/contexts/ThemeContext';
 
-type RiskLevel = 'conservative' | 'moderate' | 'aggressive';
+type RiskLevel = 'conservative' | 'aggressive';
 
 interface FilterState {
     riskLevel: RiskLevel;
@@ -39,18 +40,17 @@ interface FilterState {
 
 const RISK_PRESETS: Record<RiskLevel, { minLiquidity: number; maxAgeHours: number }> = {
     conservative: { minLiquidity: 100000, maxAgeHours: 48 },
-    moderate: { minLiquidity: 10000, maxAgeHours: 24 },
     aggressive: { minLiquidity: 1000, maxAgeHours: 6 },
 };
 
 export default function FiltersScreen() {
-    const colorScheme = useColorScheme();
+    const { colorScheme, toggleTheme } = useTheme();
     const isDark = colorScheme === 'dark';
 
     const [filters, setFilters] = useState<FilterState>({
-        riskLevel: 'moderate',
-        minLiquidity: 10000,
-        maxAgeHours: 24,
+        riskLevel: 'conservative',
+        minLiquidity: 100000,
+        maxAgeHours: 48,
         chains: {
             solana: true,
             ethereum: true,
@@ -89,9 +89,10 @@ export default function FiltersScreen() {
     return (
         <SafeAreaView style={[
             styles.safeArea,
-            { backgroundColor: isDark ? '#0a0a0a' : '#ffffff' }
+            { backgroundColor: isDark ? '#000000' : '#ffffff' }
         ]}>
             <StatusBar style={isDark ? 'light' : 'dark'} />
+            <NavHeader onToggleTheme={toggleTheme} />
 
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
                 {/* Header */}
@@ -104,7 +105,7 @@ export default function FiltersScreen() {
                 <View style={styles.section}>
                     <ThemedText style={styles.sectionTitle}>Risk Level</ThemedText>
                     <View style={styles.riskButtons}>
-                        {(['conservative', 'moderate', 'aggressive'] as RiskLevel[]).map((level) => (
+                        {(['conservative', 'aggressive'] as RiskLevel[]).map((level) => (
                             <Pressable
                                 key={level}
                                 style={[
@@ -115,7 +116,7 @@ export default function FiltersScreen() {
                                 onPress={() => selectRiskLevel(level)}
                             >
                                 <ThemedText style={styles.riskEmoji}>
-                                    {level === 'conservative' ? '🛡️' : level === 'moderate' ? '⚖️' : '🔥'}
+                                    {level === 'conservative' ? '🛡️' : '🔥'}
                                 </ThemedText>
                                 <ThemedText style={[
                                     styles.riskLabel,

@@ -99,20 +99,34 @@ export default function LoginScreen() {
                     {/* OAuth Buttons */}
                     <View style={styles.oauthSection}>
                         <Pressable
-                            style={[styles.oauthButton, { backgroundColor: isDark ? '#fff' : '#000' }]}
+                            style={[
+                                styles.oauthButton,
+                                {
+                                    backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#fff',
+                                    borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                                    borderWidth: 1,
+                                }
+                            ]}
                             onPress={() => handleOAuthSignIn('google')}
                             disabled={loading}
                         >
-                            <ThemedText style={[styles.oauthButtonText, { color: isDark ? '#000' : '#fff' }]}>
+                            <ThemedText style={styles.oauthLogo}>G</ThemedText>
+                            <ThemedText style={[styles.oauthButtonText, { color: isDark ? '#fff' : '#000' }]}>
                                 Continue with Google
                             </ThemedText>
                         </Pressable>
 
                         <Pressable
-                            style={[styles.oauthButton, { backgroundColor: isDark ? '#fff' : '#000' }]}
+                            style={[
+                                styles.oauthButton,
+                                {
+                                    backgroundColor: isDark ? '#fff' : '#000',
+                                }
+                            ]}
                             onPress={() => handleOAuthSignIn('apple')}
                             disabled={loading}
                         >
+                            <ThemedText style={[styles.oauthLogo, { color: isDark ? '#000' : '#fff' }]}></ThemedText>
                             <ThemedText style={[styles.oauthButtonText, { color: isDark ? '#000' : '#fff' }]}>
                                 Continue with Apple
                             </ThemedText>
@@ -240,6 +254,10 @@ const styles = StyleSheet.create({
     oauthButtonText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    oauthLogo: {
+        fontSize: 20,
+        fontWeight: '700',
     },
     divider: {
         flexDirection: 'row',
