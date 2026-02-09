@@ -74,7 +74,8 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingTop: 8,
+        paddingBottom: 16,
     },
     iconButton: {
         padding: 8,
