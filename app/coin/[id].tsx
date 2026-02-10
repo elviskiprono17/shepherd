@@ -24,6 +24,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCoin } from '@/hooks/useCoins';
+import { WhaleSignal } from '@/types/coin';
 import {
     formatPrice,
     formatLiquidity,
@@ -38,7 +39,7 @@ export default function CoinDetailScreen() {
     const { colorScheme } = useTheme();
     const isDark = colorScheme === 'dark';
 
-    const { coin, loading, error } = useCoin(id || '');
+    const { coin, loading, error, whaleSignals } = useCoin(id || '');
 
     if (loading) {
         return (
@@ -68,9 +69,13 @@ export default function CoinDetailScreen() {
     const chainInfo = getChainInfo(coin.chain);
     const priceChange = formatPercentChange(coin.priceChange24h);
 
-    // Generate "Why Buy" reasons based on coin data
-    const whyBuyReasons = generateWhyBuyReasons(coin);
-    const riskFactors = generateRiskFactors(coin);
+    // Use LLM-generated summaries from DB if available, otherwise fallback to generated
+    const whyBuyReasons = coin.llmWhyConsider && coin.llmWhyConsider.length > 0
+        ? coin.llmWhyConsider
+        : generateWhyBuyReasons(coin);
+    const riskFactors = coin.llmRiskFactors && coin.llmRiskFactors.length > 0
+        ? coin.llmRiskFactors
+        : generateRiskFactors(coin);
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? '#0a0a0a' : '#ffffff' }]}>
@@ -128,9 +133,9 @@ export default function CoinDetailScreen() {
                         isDark={isDark}
                     />
                     <MetricCard
-                        label="Freshness"
-                        value={`${coin.freshnessScore}/100`}
-                        icon="🔥"
+                        label="LP Burned"
+                        value={coin.lpBurnPercent ? `${coin.lpBurnPercent.toFixed(0)}%` : 'N/A'}
+                        icon="🔒"
                         isDark={isDark}
                     />
                 </View>
@@ -166,6 +171,39 @@ export default function CoinDetailScreen() {
                     ))}
                 </View>
 
+                {/* GoPlus Verification Badge */}
+                {coin.goplusVerified && (
+                    <View style={[styles.verificationBadge, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
+                        <ThemedText style={styles.verificationText}>✅ GoPlus Security Verified</ThemedText>
+                        <ThemedText style={styles.verificationSubtext}>
+                            Not a honeypot • Not freezable • Not mintable • Safe transfer fees
+                        </ThemedText>
+                    </View>
+                )}
+
+                {/* Whale Activity */}
+                {whaleSignals.length > 0 && (
+                    <View style={[styles.whaleCard, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                        <View style={styles.whyBuyHeader}>
+                            <ThemedText style={styles.whyBuyEmoji}>🐋</ThemedText>
+                            <ThemedText style={[styles.whyBuyTitle, { color: '#3b82f6' }]}>Whale Activity ({whaleSignals.length})</ThemedText>
+                        </View>
+                        {whaleSignals.slice(0, 5).map((ws, index) => (
+                            <View key={ws.id || index} style={styles.whaleRow}>
+                                <View style={styles.whaleInfo}>
+                                    <ThemedText style={styles.whaleWallet}>
+                                        {ws.isFirstDiscoverer ? '👑 ' : '🐋 '}
+                                        {truncateAddress(ws.walletAddress, 4)}
+                                    </ThemedText>
+                                    <ThemedText style={styles.whaleAmount}>
+                                        ${Math.round(ws.buyAmountUsd).toLocaleString()}
+                                    </ThemedText>
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
                 {/* Token Details */}
                 <View style={[styles.detailsCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
                     <ThemedText style={styles.detailsTitle}>Token Details</ThemedText>
@@ -173,6 +211,14 @@ export default function CoinDetailScreen() {
                     <DetailRow label="Pair" value={truncateAddress(coin.pairAddress, 6)} />
                     <DetailRow label="Chain" value={coin.chain.toUpperCase()} />
                     <DetailRow label="Liquidity Score" value={`${coin.liquidityScore}/100`} />
+                    <DetailRow label="GoPlus Verified" value={coin.goplusVerified ? '✅ Yes' : '❌ No'} />
+                    <DetailRow label="DexScreener Verified" value={coin.dexscreenerVerified ? '✅ Yes' : '❌ No'} />
+                    {coin.firstWhaleBuyAmount > 0 && (
+                        <DetailRow
+                            label="First Whale Buy"
+                            value={`$${Math.round(coin.firstWhaleBuyAmount).toLocaleString()}`}
+                        />
+                    )}
                 </View>
 
                 {/* Action Buttons */}
@@ -468,6 +514,49 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 16,
         marginBottom: 16,
+    },
+    verificationBadge: {
+        marginHorizontal: 20,
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 16,
+        alignItems: 'center',
+    },
+    verificationText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#22c55e',
+    },
+    verificationSubtext: {
+        fontSize: 11,
+        opacity: 0.7,
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    whaleCard: {
+        marginHorizontal: 20,
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 16,
+    },
+    whaleRow: {
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(59, 130, 246, 0.1)',
+    },
+    whaleInfo: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    whaleWallet: {
+        fontSize: 13,
+        fontWeight: '500',
+    },
+    whaleAmount: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#3b82f6',
     },
     detailsCard: {
         marginHorizontal: 20,

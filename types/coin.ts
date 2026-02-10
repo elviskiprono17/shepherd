@@ -1,12 +1,15 @@
 /**
- * Coin Types - Mirrors DexScreener API response structure
- * These types will be used throughout the app for type safety
+ * Coin Types - Mirrors Supabase `coins` table schema
+ * Includes fields for GoPlus verification and LLM summaries
  */
 
 // Chain identifiers supported by the app
 export type ChainId = 'solana' | 'ethereum' | 'bsc' | 'base' | 'arbitrum';
 
-// Core coin data structure
+// Tier levels based on risk tolerance filters
+export type CoinTier = 'aggressive' | 'conservative';
+
+// Core coin data structure (matches Supabase `coins` table)
 export interface Coin {
     id: string;
     tokenAddress: string;
@@ -20,11 +23,42 @@ export interface Coin {
     volume24h: number;
     marketCap: number | null;
     pairCreatedAt: string; // ISO timestamp
+    tier: CoinTier;
 
-    // Explainability fields for "Why Card"
+    // Discovery metadata
+    discoveryTimestamp: string;
+    firstWhaleWallet: string;
+    firstWhaleBuyAmount: number;
+
+    // Verification statuses
+    goplusVerified: boolean;
+    goplusDetails: Record<string, any>;
+    dexscreenerVerified: boolean;
+    lpBurnPercent: number;
+
+    // LLM-generated summaries (mock data until Claude is integrated)
+    llmWhyConsider: string[];
+    llmRiskFactors: string[];
+    llmGeneratedAt: string | null;
+
+    // Computed fields (calculated client-side)
     freshnessScore: number;   // 0-100, higher = newer
     liquidityScore: number;   // 0-100, higher = more liquid
     discoveryReason: string;  // Human-readable explanation
+
+    // Whale signals count (from joined query)
+    whaleCount?: number;
+}
+
+// Whale signal record (matches Supabase `whale_signals` table)
+export interface WhaleSignal {
+    id: string;
+    coinId: string;
+    walletAddress: string;
+    buyAmountUsd: number;
+    transactionSignature: string;
+    isFirstDiscoverer: boolean;
+    createdAt: string;
 }
 
 // Metrics snapshot for historical tracking
