@@ -1,13 +1,11 @@
 /**
  * useCoins Hook
  * Custom React hook for fetching and managing coin data from Supabase
- * Falls back to mock data if Supabase is unavailable or times out
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { Coin, WhaleSignal, UseCoinsResult, ChainId, CoinTier } from '@/types/coin';
 import { supabase } from '@/utils/supabase';
-import { getMockCoins } from '@/data/mockCoins';
 
 // Calculate freshness score (0-100, higher = newer)
 function calculateFreshnessScore(createdAt: string): number {
@@ -85,7 +83,7 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
 
 /**
  * Hook to fetch and manage coin list data from Supabase
- * Provides loading state, error handling, and refresh capability
+ * Shows empty state if no coins are available
  */
 export function useCoins(): UseCoinsResult {
     const [coins, setCoins] = useState<Coin[]>([]);
@@ -97,7 +95,6 @@ export function useCoins(): UseCoinsResult {
             setLoading(true);
             setError(null);
 
-            // Try Supabase with a 5-second timeout
             const { data, error: dbError } = await withTimeout(
                 supabase
                     .from('coins')
@@ -108,8 +105,9 @@ export function useCoins(): UseCoinsResult {
             );
 
             if (dbError) {
-                console.warn('Supabase error, falling back to mock data:', dbError.message);
-                setCoins(getMockCoins());
+                console.warn('Supabase error:', dbError.message);
+                setError(new Error(dbError.message));
+                setCoins([]);
                 return;
             }
 
@@ -119,18 +117,13 @@ export function useCoins(): UseCoinsResult {
                     .sort((a, b) => b.freshnessScore - a.freshnessScore);
                 setCoins(mapped);
             } else {
-                // No data in Supabase yet — use mock data
-                console.log('No coins in Supabase yet, using mock data');
-                setCoins(getMockCoins());
+                console.log('No coins in Supabase yet');
+                setCoins([]);
             }
         } catch (err) {
-            console.warn('Fetch coins error, using mock data:', err);
-            // Fallback to mock data on any error (including timeout)
-            try {
-                setCoins(getMockCoins());
-            } catch {
-                setError(err instanceof Error ? err : new Error('Failed to fetch coins'));
-            }
+            console.warn('Fetch coins error:', err);
+            setError(err instanceof Error ? err : new Error('Failed to fetch coins'));
+            setCoins([]);
         } finally {
             setLoading(false);
         }
@@ -192,7 +185,6 @@ export function useCoin(coinId: string): {
             try {
                 setLoading(true);
 
-                // Try Supabase with timeout
                 const { data, error: dbError } = await withTimeout(
                     supabase
                         .from('coins')
@@ -203,11 +195,7 @@ export function useCoin(coinId: string): {
                 );
 
                 if (dbError || !data) {
-                    // Fallback to mock data
-                    const allCoins = getMockCoins();
-                    const found = allCoins.find(c => c.id === coinId) || null;
-                    if (!found) throw new Error('Coin not found');
-                    setCoin(found);
+                    setError(new Error(dbError?.message || 'Coin not found'));
                     return;
                 }
 
@@ -226,15 +214,7 @@ export function useCoin(coinId: string): {
                 setWhaleSignals(signals);
             } catch (err) {
                 console.warn('Fetch coin error:', err);
-                // Try mock fallback
-                try {
-                    const allCoins = getMockCoins();
-                    const found = allCoins.find(c => c.id === coinId) || null;
-                    if (found) setCoin(found);
-                    else setError(err instanceof Error ? err : new Error('Failed to fetch coin'));
-                } catch {
-                    setError(err instanceof Error ? err : new Error('Failed to fetch coin'));
-                }
+                setError(err instanceof Error ? err : new Error('Failed to fetch coin'));
             } finally {
                 setLoading(false);
             }

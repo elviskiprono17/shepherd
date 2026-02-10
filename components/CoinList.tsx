@@ -51,10 +51,10 @@ export function CoinList({
     if (!loading && coins.length === 0) {
         return (
             <View style={styles.emptyContainer}>
-                <ThemedText style={styles.emptyEmoji}>🔍</ThemedText>
-                <ThemedText style={styles.emptyTitle}>No coins found</ThemedText>
+                <ThemedText style={styles.emptyEmoji}>🐑</ThemedText>
+                <ThemedText style={styles.emptyTitle}>Nothing to show here for now</ThemedText>
                 <ThemedText style={styles.emptySubtitle}>
-                    Pull down to refresh and discover new tokens
+                    Refresh for latest coins
                 </ThemedText>
             </View>
         );
