@@ -1,7 +1,7 @@
 /**
  * useCoins Hook
  * Custom React hook for fetching and managing coin data from Supabase
- * Falls back to mock data if Supabase is unavailable
+ * Falls back to mock data if Supabase is unavailable or times out
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -29,33 +29,32 @@ function calculateLiquidityScore(liquidity: number): number {
 // Map Supabase snake_case row to camelCase Coin type
 function mapRowToCoin(row: any): Coin {
     const discoveryTs = row.discovery_timestamp || row.created_at || new Date().toISOString();
-    const pairCreatedAt = row.pair_created_at || discoveryTs;
 
     return {
         id: row.id,
-        tokenAddress: row.token_address,
+        tokenAddress: row.token_address || '',
         pairAddress: row.pair_address || '',
-        name: row.name,
-        symbol: row.symbol,
+        name: row.name || 'Unknown',
+        symbol: row.symbol || '???',
         chain: (row.chain || 'solana') as ChainId,
-        price: row.price || 0,
-        priceChange24h: row.price_change_24h || 0,
-        liquidity: row.liquidity || 0,
-        volume24h: row.volume_24h || 0,
-        marketCap: row.market_cap,
-        pairCreatedAt,
+        price: Number(row.price) || 0,
+        priceChange24h: Number(row.price_change_24h) || 0,
+        liquidity: Number(row.liquidity) || 0,
+        volume24h: Number(row.volume_24h) || 0,
+        marketCap: row.market_cap ? Number(row.market_cap) : null,
+        pairCreatedAt: discoveryTs,
         tier: (row.tier || 'aggressive') as CoinTier,
 
         // Discovery metadata
         discoveryTimestamp: discoveryTs,
         firstWhaleWallet: row.first_whale_wallet || '',
-        firstWhaleBuyAmount: row.first_whale_buy_amount || 0,
+        firstWhaleBuyAmount: Number(row.first_whale_buy_amount) || 0,
 
         // Verification
         goplusVerified: row.goplus_verified || row.rugcheck_verified || false,
         goplusDetails: row.goplus_details || {},
         dexscreenerVerified: row.dexscreener_verified || false,
-        lpBurnPercent: row.lp_burn_percent || 0,
+        lpBurnPercent: Number(row.lp_burn_percent) || 0,
 
         // LLM summaries
         llmWhyConsider: row.llm_why_consider || [],
@@ -63,15 +62,25 @@ function mapRowToCoin(row: any): Coin {
         llmGeneratedAt: row.llm_generated_at || null,
 
         // Computed fields
-        freshnessScore: calculateFreshnessScore(pairCreatedAt),
-        liquidityScore: calculateLiquidityScore(row.liquidity || 0),
+        freshnessScore: calculateFreshnessScore(discoveryTs),
+        liquidityScore: calculateLiquidityScore(Number(row.liquidity) || 0),
         discoveryReason: row.first_whale_buy_amount
-            ? `Whale bought $${Math.round(row.first_whale_buy_amount).toLocaleString()}`
+            ? `Whale bought $${Math.round(Number(row.first_whale_buy_amount)).toLocaleString()}`
             : 'New token discovered on Solana',
 
-        // Whale count from joined data
-        whaleCount: row.whale_signals?.[0]?.count || 0,
+        // Whale count
+        whaleCount: 0,
     };
+}
+
+/** Helper: race a promise against a timeout */
+function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
+    return Promise.race([
+        Promise.resolve(promise),
+        new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('Supabase query timed out')), ms)
+        ),
+    ]);
 }
 
 /**
@@ -88,36 +97,37 @@ export function useCoins(): UseCoinsResult {
             setLoading(true);
             setError(null);
 
-            // Try Supabase first
-            const { data, error: dbError } = await supabase
-                .from('coins')
-                .select('*, whale_signals(count)')
-                .order('created_at', { ascending: false })
-                .limit(50);
+            // Try Supabase with a 5-second timeout
+            const { data, error: dbError } = await withTimeout(
+                supabase
+                    .from('coins')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50),
+                5000
+            );
 
             if (dbError) {
                 console.warn('Supabase error, falling back to mock data:', dbError.message);
-                const mockData = getMockCoins();
-                setCoins(mockData);
+                setCoins(getMockCoins());
                 return;
             }
 
             if (data && data.length > 0) {
+                console.log(`Loaded ${data.length} coins from Supabase`);
                 const mapped = data.map(mapRowToCoin)
                     .sort((a, b) => b.freshnessScore - a.freshnessScore);
                 setCoins(mapped);
             } else {
                 // No data in Supabase yet — use mock data
                 console.log('No coins in Supabase yet, using mock data');
-                const mockData = getMockCoins();
-                setCoins(mockData);
+                setCoins(getMockCoins());
             }
         } catch (err) {
-            console.error('Fetch coins error:', err);
-            // Fallback to mock data on any error
+            console.warn('Fetch coins error, using mock data:', err);
+            // Fallback to mock data on any error (including timeout)
             try {
-                const mockData = getMockCoins();
-                setCoins(mockData);
+                setCoins(getMockCoins());
             } catch {
                 setError(err instanceof Error ? err : new Error('Failed to fetch coins'));
             }
@@ -182,12 +192,15 @@ export function useCoin(coinId: string): {
             try {
                 setLoading(true);
 
-                // Try Supabase first
-                const { data, error: dbError } = await supabase
-                    .from('coins')
-                    .select('*, whale_signals(*)')
-                    .eq('id', coinId)
-                    .maybeSingle();
+                // Try Supabase with timeout
+                const { data, error: dbError } = await withTimeout(
+                    supabase
+                        .from('coins')
+                        .select('*, whale_signals(*)')
+                        .eq('id', coinId)
+                        .maybeSingle(),
+                    5000
+                );
 
                 if (dbError || !data) {
                     // Fallback to mock data
@@ -212,7 +225,16 @@ export function useCoin(coinId: string): {
                 setCoin(mapRowToCoin(data));
                 setWhaleSignals(signals);
             } catch (err) {
-                setError(err instanceof Error ? err : new Error('Failed to fetch coin'));
+                console.warn('Fetch coin error:', err);
+                // Try mock fallback
+                try {
+                    const allCoins = getMockCoins();
+                    const found = allCoins.find(c => c.id === coinId) || null;
+                    if (found) setCoin(found);
+                    else setError(err instanceof Error ? err : new Error('Failed to fetch coin'));
+                } catch {
+                    setError(err instanceof Error ? err : new Error('Failed to fetch coin'));
+                }
             } finally {
                 setLoading(false);
             }
