@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 8,
         borderWidth: 2,
-        borderStyle: 'dashed',
+        borderStyle: 'solid',
     },
     proButtonText: {
         fontSize: 14,
