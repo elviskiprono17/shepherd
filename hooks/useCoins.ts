@@ -101,7 +101,7 @@ export function useCoins(): UseCoinsResult {
                     .select('*')
                     .order('created_at', { ascending: false })
                     .limit(50),
-                5000
+                15000
             );
 
             if (dbError) {
@@ -191,7 +191,7 @@ export function useCoin(coinId: string): {
                         .select('*, whale_signals(*)')
                         .eq('id', coinId)
                         .maybeSingle(),
-                    5000
+                    15000
                 );
 
                 if (dbError || !data) {
