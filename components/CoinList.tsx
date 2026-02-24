@@ -51,7 +51,7 @@ export function CoinList({
     if (!loading && coins.length === 0) {
         return (
             <View style={styles.emptyContainer}>
-                <ThemedText style={styles.emptyEmoji}>🐑</ThemedText>
+
                 <ThemedText style={styles.emptyTitle}>Nothing to show here for now</ThemedText>
                 <ThemedText style={styles.emptySubtitle}>
                     Refresh for latest coins
@@ -93,10 +93,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 32,
-    },
-    emptyEmoji: {
-        fontSize: 48,
-        marginBottom: 16,
     },
     emptyTitle: {
         fontSize: 18,
