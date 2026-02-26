@@ -1,90 +1,56 @@
 /**
  * Filters Screen - Risk Appetite Configuration
- * Allows users to set filters based on their risk tolerance:
- * - Liquidity thresholds
- * - Token age preferences  
- * - Chain selection
- * - Market cap ranges
+ * Allows users to set filters based on their risk tolerance.
+ * Displays real thresholds for Aggressive and Conservative tiers.
+ * Persists selection via FilterContext.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
     StyleSheet,
     SafeAreaView,
     View,
     ScrollView,
     Pressable,
-    Switch
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { NavHeader } from '@/components/NavHeader';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFilter } from '@/contexts/FilterContext';
+import { CoinTier } from '@/types/coin';
 
-type RiskLevel = 'conservative' | 'aggressive';
-
-interface FilterState {
-    riskLevel: RiskLevel;
-    minLiquidity: number;
-    maxAgeHours: number;
-    chains: {
-        solana: boolean;
-        ethereum: boolean;
-        bsc: boolean;
-        base: boolean;
-        arbitrum: boolean;
-    };
-}
-
-const RISK_PRESETS: Record<RiskLevel, { minLiquidity: number; maxAgeHours: number }> = {
-    conservative: { minLiquidity: 100000, maxAgeHours: 48 },
-    aggressive: { minLiquidity: 1000, maxAgeHours: 6 },
+// Real thresholds matching the webhook-helius edge function
+const TIER_THRESHOLDS: Record<CoinTier, {
+    whaleBuy: string;
+    marketCap: string;
+    liquidity: string;
+    emoji: string;
+    description: string;
+}> = {
+    aggressive: {
+        whaleBuy: '$10K – $60K',
+        marketCap: '$200K – $5M',
+        liquidity: '$50K+',
+        emoji: '🔥',
+        description: 'Higher risk, earlier entries. Smaller caps with emerging whale interest.',
+    },
+    conservative: {
+        whaleBuy: '$50K+',
+        marketCap: '$3M – $30M',
+        liquidity: '$150K+',
+        emoji: '🛡️',
+        description: 'Lower risk, established tokens. Larger caps with strong whale conviction.',
+    },
 };
 
 export default function FiltersScreen() {
     const { colorScheme, toggleTheme } = useTheme();
+    const { selectedTier, setSelectedTier } = useFilter();
     const isDark = colorScheme === 'dark';
 
-    const [filters, setFilters] = useState<FilterState>({
-        riskLevel: 'conservative',
-        minLiquidity: 100000,
-        maxAgeHours: 48,
-        chains: {
-            solana: true,
-            ethereum: true,
-            bsc: true,
-            base: true,
-            arbitrum: true,
-        },
-    });
-
-    const selectRiskLevel = (level: RiskLevel) => {
-        const preset = RISK_PRESETS[level];
-        setFilters(prev => ({
-            ...prev,
-            riskLevel: level,
-            minLiquidity: preset.minLiquidity,
-            maxAgeHours: preset.maxAgeHours,
-        }));
-    };
-
-    const toggleChain = (chain: keyof FilterState['chains']) => {
-        setFilters(prev => ({
-            ...prev,
-            chains: {
-                ...prev.chains,
-                [chain]: !prev.chains[chain],
-            },
-        }));
-    };
-
-    const formatLiquidity = (value: number) => {
-        if (value >= 100000) return '$100K+';
-        if (value >= 10000) return '$10K+';
-        return '$1K+';
-    };
+    const currentThresholds = TIER_THRESHOLDS[selectedTier];
 
     return (
         <SafeAreaView style={[
@@ -105,22 +71,22 @@ export default function FiltersScreen() {
                 <View style={styles.section}>
                     <ThemedText style={styles.sectionTitle}>Risk Level</ThemedText>
                     <View style={styles.riskButtons}>
-                        {(['conservative', 'aggressive'] as RiskLevel[]).map((level) => (
+                        {(['aggressive', 'conservative'] as CoinTier[]).map((level) => (
                             <Pressable
                                 key={level}
                                 style={[
                                     styles.riskButton,
-                                    filters.riskLevel === level && styles.riskButtonActive,
+                                    selectedTier === level && styles.riskButtonActive,
                                     { borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
                                 ]}
-                                onPress={() => selectRiskLevel(level)}
+                                onPress={() => setSelectedTier(level)}
                             >
                                 <ThemedText style={styles.riskEmoji}>
-                                    {level === 'conservative' ? '🛡️' : '🔥'}
+                                    {TIER_THRESHOLDS[level].emoji}
                                 </ThemedText>
                                 <ThemedText style={[
                                     styles.riskLabel,
-                                    filters.riskLevel === level && styles.riskLabelActive
+                                    selectedTier === level && styles.riskLabelActive
                                 ]}>
                                     {level.charAt(0).toUpperCase() + level.slice(1)}
                                 </ThemedText>
@@ -129,55 +95,43 @@ export default function FiltersScreen() {
                     </View>
                 </View>
 
-                {/* Current Settings */}
+                {/* Tier Description */}
                 <View style={styles.section}>
-                    <ThemedText style={styles.sectionTitle}>Current Settings</ThemedText>
+                    <View style={[styles.descriptionCard, { backgroundColor: isDark ? 'rgba(250,204,21,0.08)' : 'rgba(250,204,21,0.08)' }]}>
+                        <ThemedText style={styles.descriptionText}>
+                            {currentThresholds.description}
+                        </ThemedText>
+                    </View>
+                </View>
+
+                {/* Current Thresholds */}
+                <View style={styles.section}>
+                    <ThemedText style={styles.sectionTitle}>Signal Thresholds</ThemedText>
                     <View style={[styles.settingCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
                         <View style={styles.settingRow}>
-                            <ThemedText style={styles.settingLabel}>Min Liquidity</ThemedText>
-                            <ThemedText style={styles.settingValue}>{formatLiquidity(filters.minLiquidity)}</ThemedText>
+                            <ThemedText style={styles.settingLabel}>🐋  Whale Buy</ThemedText>
+                            <ThemedText style={styles.settingValue}>{currentThresholds.whaleBuy}</ThemedText>
                         </View>
+                        <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
                         <View style={styles.settingRow}>
-                            <ThemedText style={styles.settingLabel}>Max Token Age</ThemedText>
-                            <ThemedText style={styles.settingValue}>{filters.maxAgeHours}h</ThemedText>
+                            <ThemedText style={styles.settingLabel}>📊  Market Cap</ThemedText>
+                            <ThemedText style={styles.settingValue}>{currentThresholds.marketCap}</ThemedText>
+                        </View>
+                        <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+                        <View style={styles.settingRow}>
+                            <ThemedText style={styles.settingLabel}>💧  Liquidity</ThemedText>
+                            <ThemedText style={styles.settingValue}>{currentThresholds.liquidity}</ThemedText>
                         </View>
                     </View>
                 </View>
 
-                {/* Chain Selection */}
-                <View style={styles.section}>
-                    <ThemedText style={styles.sectionTitle}>Chains</ThemedText>
-                    <View style={[styles.chainCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-                        {Object.entries(filters.chains).map(([chain, enabled]) => (
-                            <View key={chain} style={styles.chainRow}>
-                                <View style={styles.chainInfo}>
-                                    <ThemedText style={styles.chainEmoji}>
-                                        {chain === 'solana' ? '◎' : chain === 'ethereum' ? 'Ξ' : chain === 'bsc' ? '🔶' : chain === 'base' ? '🔵' : '◆'}
-                                    </ThemedText>
-                                    <ThemedText style={styles.chainName}>
-                                        {chain.charAt(0).toUpperCase() + chain.slice(1)}
-                                    </ThemedText>
-                                </View>
-                                <Switch
-                                    value={enabled}
-                                    onValueChange={() => toggleChain(chain as keyof FilterState['chains'])}
-                                    trackColor={{ false: '#767577', true: '#FACC15' }}
-                                    thumbColor={enabled ? '#fff' : '#f4f3f4'}
-                                />
-                            </View>
-                        ))}
-                    </View>
+                {/* Active Indicator */}
+                <View style={styles.activeIndicator}>
+                    <View style={[styles.activeDot, { backgroundColor: '#22C55E' }]} />
+                    <ThemedText style={styles.activeText}>
+                        {selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)} filter active
+                    </ThemedText>
                 </View>
-
-                {/* Apply Button */}
-                <Pressable
-                    style={({ pressed }) => [
-                        styles.applyButton,
-                        pressed && styles.applyButtonPressed
-                    ]}
-                >
-                    <ThemedText style={styles.applyButtonText}>Apply Filters</ThemedText>
-                </Pressable>
             </ScrollView>
         </SafeAreaView>
     );
@@ -245,6 +199,15 @@ const styles = StyleSheet.create({
         color: '#FACC15',
         opacity: 1,
     },
+    descriptionCard: {
+        borderRadius: 12,
+        padding: 16,
+    },
+    descriptionText: {
+        fontSize: 13,
+        opacity: 0.7,
+        lineHeight: 20,
+    },
     settingCard: {
         borderRadius: 12,
         padding: 16,
@@ -253,7 +216,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
+        paddingVertical: 12,
     },
     settingLabel: {
         fontSize: 14,
@@ -264,44 +227,23 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FACC15',
     },
-    chainCard: {
-        borderRadius: 12,
-        padding: 8,
+    divider: {
+        height: 1,
     },
-    chainRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 8,
-    },
-    chainInfo: {
+    activeIndicator: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-    },
-    chainEmoji: {
-        fontSize: 20,
-        width: 28,
-        textAlign: 'center',
-    },
-    chainName: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    applyButton: {
-        backgroundColor: '#FACC15',
-        marginHorizontal: 20,
+        justifyContent: 'center',
         paddingVertical: 16,
-        borderRadius: 12,
-        alignItems: 'center',
+        gap: 8,
     },
-    applyButtonPressed: {
-        opacity: 0.8,
+    activeDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
-    applyButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+    activeText: {
+        fontSize: 13,
+        opacity: 0.6,
     },
 });

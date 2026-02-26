@@ -6,11 +6,21 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const GOPLUS_APP_KEY = Deno.env.get("GOPLUS_APP_KEY") || Deno.env.get("GOPLUS_API_KEY") || "";
 const GOPLUS_APP_SECRET = Deno.env.get("GOPLUS_APP_SECRET") || "";
 
-// Production thresholds
-const MIN_WHALE_BUY_USD = 25000;
-const MIN_LIQUIDITY_USD = 50000;
-const MIN_MARKET_CAP_USD = 200000;
-const MAX_MARKET_CAP_USD = 20000000;
+// ---- Dual-Tier Thresholds ----
+const AGGRESSIVE = {
+    MIN_WHALE_BUY: 10000,
+    MAX_WHALE_BUY: 60000,
+    MIN_MARKET_CAP: 200000,
+    MAX_MARKET_CAP: 5000000,
+    MIN_LIQUIDITY: 50000,
+};
+
+const CONSERVATIVE = {
+    MIN_WHALE_BUY: 50000,
+    MIN_MARKET_CAP: 3000000,
+    MAX_MARKET_CAP: 30000000,
+    MIN_LIQUIDITY: 150000,
+};
 
 interface SwapEvent {
     nativeInput?: { account: string; amount: string };
@@ -74,7 +84,6 @@ async function checkGoPlus(mint: string): Promise<{ passed: boolean; data: any; 
         const json = await resp.json();
         if (json.code !== 1 || !json.result) return { passed: true, data: null, verified: false };
 
-        // Find token (exact or case-insensitive)
         const keys = Object.keys(json.result);
         let tokenData = json.result[mint];
         if (!tokenData) { const l = mint.toLowerCase(); for (const k of keys) { if (k.toLowerCase() === l) { tokenData = json.result[k]; break; } } }
@@ -94,6 +103,29 @@ async function checkGoPlus(mint: string): Promise<{ passed: boolean; data: any; 
         console.error("GoPlus error:", error);
         return { passed: true, data: null, verified: false };
     }
+}
+
+// ---- Determine tier from buy amount + DexScreener data ----
+function determineTier(buyUsd: number, liq: number, mcap: number): string | null {
+    // Conservative check first (higher quality signal)
+    if (
+        buyUsd >= CONSERVATIVE.MIN_WHALE_BUY &&
+        mcap >= CONSERVATIVE.MIN_MARKET_CAP && mcap <= CONSERVATIVE.MAX_MARKET_CAP &&
+        liq >= CONSERVATIVE.MIN_LIQUIDITY
+    ) {
+        return "conservative";
+    }
+
+    // Aggressive check
+    if (
+        buyUsd >= AGGRESSIVE.MIN_WHALE_BUY && buyUsd <= AGGRESSIVE.MAX_WHALE_BUY &&
+        mcap >= AGGRESSIVE.MIN_MARKET_CAP && mcap <= AGGRESSIVE.MAX_MARKET_CAP &&
+        liq >= AGGRESSIVE.MIN_LIQUIDITY
+    ) {
+        return "aggressive";
+    }
+
+    return null; // Does not qualify for either tier
 }
 
 // ---- Main Handler ----
@@ -126,12 +158,11 @@ Deno.serve(async (req: Request) => {
                     }
                 }
 
-                if (buyUsd < MIN_WHALE_BUY_USD) continue;
-                console.log(`Whale: $${buyUsd.toFixed(0)} for ${mint.slice(0, 12)}`);
+                // Skip if below minimum aggressive threshold
+                if (buyUsd < AGGRESSIVE.MIN_WHALE_BUY) continue;
 
                 const { data: existing } = await supabase.from("coins").select("id").eq("token_address", mint).maybeSingle();
                 if (existing) {
-                    // Add new whale signal if not duplicate
                     const { data: sig } = await supabase.from("whale_signals").select("id").eq("wallet_address", wallet).eq("coin_id", existing.id).maybeSingle();
                     if (!sig) {
                         await supabase.from("whale_signals").insert({ coin_id: existing.id, wallet_address: wallet, buy_amount_usd: buyUsd, transaction_signature: tx.signature, is_first_discoverer: false });
@@ -148,22 +179,33 @@ Deno.serve(async (req: Request) => {
                 if (!pairs.length) continue;
                 const best = pairs.reduce((a: any, b: any) => (b.liquidity?.usd || 0) > (a.liquidity?.usd || 0) ? b : a);
                 const liq = best.liquidity?.usd || 0, mcap = best.marketCap || best.fdv || 0;
-                if (liq < MIN_LIQUIDITY_USD || mcap < MIN_MARKET_CAP_USD || mcap > MAX_MARKET_CAP_USD) continue;
+                const dexPrice = parseFloat(best.priceUsd) || 0;
 
-                // GoPlus Security
+                // Determine tier
+                const tier = determineTier(buyUsd, liq, mcap);
+                if (!tier) {
+                    console.log(`Skip ${mint.slice(0, 12)}: no tier match (buy=$${buyUsd.toFixed(0)} liq=$${liq.toFixed(0)} mcap=$${mcap.toFixed(0)})`);
+                    continue;
+                }
+
+                // GoPlus Security — must pass before we record
                 const gp = await checkGoPlus(mint);
-                if (!gp.passed) continue;
+                if (!gp.passed) {
+                    console.log(`Skip ${mint.slice(0, 12)}: failed GoPlus`);
+                    continue;
+                }
 
                 let lpBurn = 0;
                 for (const d of (gp.data?.dex || [])) { if (d.burn_percent > lpBurn) lpBurn = d.burn_percent; }
 
-                // Insert coin
+                // Insert coin — discovered_at_price only set after verification passes
                 const { data: newCoin, error: insertErr } = await supabase.from("coins").insert({
                     token_address: mint, pair_address: best.pairAddress || '',
                     name: best.baseToken.name, symbol: best.baseToken.symbol, chain: "solana",
-                    price: parseFloat(best.priceUsd) || 0, price_change_24h: best.priceChange?.h24 || 0,
+                    price: dexPrice, price_change_24h: best.priceChange?.h24 || 0,
                     liquidity: liq, volume_24h: best.volume?.h24 || 0, market_cap: mcap,
-                    tier: "aggressive", discovery_timestamp: new Date((tx.timestamp || Date.now() / 1000) * 1000).toISOString(),
+                    tier, discovery_timestamp: new Date((tx.timestamp || Date.now() / 1000) * 1000).toISOString(),
+                    discovered_at_price: dexPrice,
                     first_whale_wallet: wallet, first_whale_buy_amount: buyUsd,
                     goplus_verified: gp.verified, goplus_details: gp.data || {}, lp_burn_percent: lpBurn,
                     rugcheck_verified: true, dexscreener_verified: true,
@@ -178,8 +220,8 @@ Deno.serve(async (req: Request) => {
                     coin_id: newCoin.id, wallet_address: wallet,
                     buy_amount_usd: buyUsd, transaction_signature: tx.signature, is_first_discoverer: true,
                 });
-                console.log(`Discovered: ${best.baseToken.symbol}`);
-                results.push({ mint, name: best.baseToken.name, symbol: best.baseToken.symbol, status: "discovered", id: newCoin.id });
+                console.log(`Discovered [${tier.toUpperCase()}]: ${best.baseToken.symbol} @ $${dexPrice}`);
+                results.push({ mint, name: best.baseToken.name, symbol: best.baseToken.symbol, tier, status: "discovered", id: newCoin.id });
             }
         }
 

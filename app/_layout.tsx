@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { FilterProvider } from '@/contexts/FilterContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -54,7 +55,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RootLayoutNav />
+        <FilterProvider>
+          <RootLayoutNav />
+        </FilterProvider>
       </AuthProvider>
     </ThemeProvider>
   );

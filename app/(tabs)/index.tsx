@@ -24,13 +24,15 @@ import { CoinList } from '@/components/CoinList';
 import { NavHeader } from '@/components/NavHeader';
 import { useCoins } from '@/hooks/useCoins';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFilter } from '@/contexts/FilterContext';
 import { Colors } from '@/constants/theme';
 import { Coin } from '@/types/coin';
 
 export default function HomeScreen() {
   const { colorScheme, toggleTheme } = useTheme();
+  const { selectedTier } = useFilter();
   const isDark = colorScheme === 'dark';
-  const { coins, loading, error, refresh } = useCoins();
+  const { coins, loading, error, refresh } = useCoins(selectedTier);
 
   // Navigate to coin detail screen when card is pressed
   const handleCoinPress = (coin: Coin) => {

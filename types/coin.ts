@@ -27,6 +27,7 @@ export interface Coin {
 
     // Discovery metadata
     discoveryTimestamp: string;
+    discoveredAtPrice: number;
     firstWhaleWallet: string;
     firstWhaleBuyAmount: number;
 

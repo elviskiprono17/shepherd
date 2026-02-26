@@ -45,6 +45,7 @@ function mapRowToCoin(row: any): Coin {
 
         // Discovery metadata
         discoveryTimestamp: discoveryTs,
+        discoveredAtPrice: Number(row.discovered_at_price) || 0,
         firstWhaleWallet: row.first_whale_wallet || '',
         firstWhaleBuyAmount: Number(row.first_whale_buy_amount) || 0,
 
@@ -85,7 +86,7 @@ function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
  * Hook to fetch and manage coin list data from Supabase
  * Shows empty state if no coins are available
  */
-export function useCoins(): UseCoinsResult {
+export function useCoins(tier?: CoinTier): UseCoinsResult {
     const [coins, setCoins] = useState<Coin[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -95,14 +96,17 @@ export function useCoins(): UseCoinsResult {
             setLoading(true);
             setError(null);
 
-            const { data, error: dbError } = await withTimeout(
-                supabase
-                    .from('coins')
-                    .select('*')
-                    .order('created_at', { ascending: false })
-                    .limit(50),
-                15000
-            );
+            let query = supabase
+                .from('coins')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (tier) {
+                query = query.eq('tier', tier);
+            }
+
+            const { data, error: dbError } = await withTimeout(query, 15000);
 
             if (dbError) {
                 console.warn('Supabase error:', dbError.message);
@@ -127,7 +131,7 @@ export function useCoins(): UseCoinsResult {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [tier]);
 
     const refresh = useCallback(async () => {
         await fetchCoins();
