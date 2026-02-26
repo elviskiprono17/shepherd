@@ -25,6 +25,7 @@ const MAPPING = {
   'line.3.horizontal': 'menu',
   'sun.max.fill': 'wb-sunny',
   'moon.fill': 'nightlight-round',
+  'bookmark.fill': 'bookmark-add',
 } as IconMapping;
 
 /**

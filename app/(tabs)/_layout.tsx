@@ -2,7 +2,7 @@
  * Tab Layout - Three Main Screens
  * 1. Hot - Hot meme coins feed
  * 2. Filters - Risk appetite configuration
- * 3. Alerts - Notification management
+ * 3. Watchlist - Saved coins to track
  */
 
 import { Tabs } from 'expo-router';
@@ -43,10 +43,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="alerts"
+        name="watchlist"
         options={{
-          title: 'Alerts',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bell.fill" color={color} />,
+          title: 'Watchlist',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bookmark.fill" color={color} />,
         }}
       />
       {/* Hide explore tab - keeping file for future use */}
