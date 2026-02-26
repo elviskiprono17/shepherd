@@ -128,6 +128,63 @@ function determineTier(buyUsd: number, liq: number, mcap: number): string | null
     return null; // Does not qualify for either tier
 }
 
+// ---- Solana RPC: Check if wallet previously held this token ----
+const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
+
+async function isFirstTimeBuyer(wallet: string, mint: string): Promise<boolean> {
+    try {
+        // Step 1: Find the wallet's token account for this mint
+        const ataResp = await fetch(SOLANA_RPC, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                jsonrpc: "2.0", id: 1,
+                method: "getTokenAccountsByOwner",
+                params: [
+                    wallet,
+                    { mint },
+                    { encoding: "jsonParsed" }
+                ]
+            }),
+        });
+        const ataData = await ataResp.json();
+        const accounts = ataData?.result?.value || [];
+        if (accounts.length === 0) {
+            // No token account found — this shouldn't happen post-swap,
+            // but treat as first-time buyer (safe fallback)
+            return true;
+        }
+
+        const tokenAccountPubkey = accounts[0].pubkey;
+
+        // Step 2: Check how many transactions this token account has
+        // If only 1 (the current buy), it's a first-time buyer
+        const sigResp = await fetch(SOLANA_RPC, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                jsonrpc: "2.0", id: 2,
+                method: "getSignaturesForAddress",
+                params: [
+                    tokenAccountPubkey,
+                    { limit: 3 }  // Only need to know if > 1
+                ]
+            }),
+        });
+        const sigData = await sigResp.json();
+        const signatures = sigData?.result || [];
+
+        // 1 signature = only the current buy → first-time buyer
+        // 2+ signatures = prior activity with this token → NOT first-time
+        return signatures.length <= 1;
+    } catch (error) {
+        console.error("Fresh-buy check error:", error);
+        // On error, allow the signal through (graceful degradation)
+        return true;
+    }
+}
+
 // ---- Main Handler ----
 Deno.serve(async (req: Request) => {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "*" } });
@@ -160,6 +217,13 @@ Deno.serve(async (req: Request) => {
 
                 // Skip if below minimum aggressive threshold
                 if (buyUsd < AGGRESSIVE.MIN_WHALE_BUY) continue;
+
+                // Fresh-buy check: skip if whale previously held this token
+                const freshBuy = await isFirstTimeBuyer(wallet, mint);
+                if (!freshBuy) {
+                    console.log(`Skip ${mint.slice(0, 12)}: whale ${wallet.slice(0, 8)} previously held this token`);
+                    continue;
+                }
 
                 const { data: existing } = await supabase.from("coins").select("id").eq("token_address", mint).maybeSingle();
                 if (existing) {
