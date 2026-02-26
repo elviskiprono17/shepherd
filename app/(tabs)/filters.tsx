@@ -2,24 +2,28 @@
  * Filters Screen - Risk Appetite Configuration
  * Allows users to set filters based on their risk tolerance.
  * Displays real thresholds for Aggressive and Conservative tiers.
- * Persists selection via FilterContext.
+ * Includes push notification preferences per tier.
  */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     StyleSheet,
     SafeAreaView,
     View,
     ScrollView,
     Pressable,
+    Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ThemedText } from '@/components/themed-text';
 import { NavHeader } from '@/components/NavHeader';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useFilter } from '@/contexts/FilterContext';
 import { CoinTier } from '@/types/coin';
+
+const NOTIF_STORAGE_KEY = '@notification_prefs';
 
 // Real thresholds matching the webhook-helius edge function
 const TIER_THRESHOLDS: Record<CoinTier, {
@@ -45,12 +49,69 @@ const TIER_THRESHOLDS: Record<CoinTier, {
     },
 };
 
+// Custom toggle that renders consistently on web and native
+function CustomToggle({ value, onValueChange }: { value: boolean; onValueChange: (v: boolean) => void }) {
+    return (
+        <Pressable
+            onPress={() => onValueChange(!value)}
+            style={[
+                styles.toggleTrack,
+                { backgroundColor: value ? '#FACC15' : '#767577' },
+            ]}
+        >
+            <View
+                style={[
+                    styles.toggleThumb,
+                    { transform: [{ translateX: value ? 20 : 0 }] },
+                ]}
+            />
+        </Pressable>
+    );
+}
+
 export default function FiltersScreen() {
     const { colorScheme, toggleTheme } = useTheme();
     const { selectedTier, setSelectedTier } = useFilter();
     const isDark = colorScheme === 'dark';
 
     const currentThresholds = TIER_THRESHOLDS[selectedTier];
+
+    // Push notification preferences
+    const [notifyAggressive, setNotifyAggressive] = useState(true);
+    const [notifyConservative, setNotifyConservative] = useState(true);
+
+    // Load saved notification prefs
+    useEffect(() => {
+        const loadPrefs = async () => {
+            try {
+                const saved = await AsyncStorage.getItem(NOTIF_STORAGE_KEY);
+                if (saved) {
+                    const prefs = JSON.parse(saved);
+                    setNotifyAggressive(prefs.aggressive ?? true);
+                    setNotifyConservative(prefs.conservative ?? true);
+                }
+            } catch (e) {
+                console.log('Error loading notification prefs:', e);
+            }
+        };
+        loadPrefs();
+    }, []);
+
+    const toggleNotifyAggressive = async (value: boolean) => {
+        setNotifyAggressive(value);
+        try {
+            const prefs = { aggressive: value, conservative: notifyConservative };
+            await AsyncStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(prefs));
+        } catch (e) { console.log('Error saving notification prefs:', e); }
+    };
+
+    const toggleNotifyConservative = async (value: boolean) => {
+        setNotifyConservative(value);
+        try {
+            const prefs = { aggressive: notifyAggressive, conservative: value };
+            await AsyncStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(prefs));
+        } catch (e) { console.log('Error saving notification prefs:', e); }
+    };
 
     return (
         <SafeAreaView style={[
@@ -61,11 +122,6 @@ export default function FiltersScreen() {
             <NavHeader onToggleTheme={toggleTheme} />
 
             <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <ThemedText style={styles.title}>Filters</ThemedText>
-                    <ThemedText style={styles.subtitle}>Set your risk appetite</ThemedText>
-                </View>
 
                 {/* Risk Level Selection */}
                 <View style={styles.section}>
@@ -132,6 +188,34 @@ export default function FiltersScreen() {
                         {selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)} filter active
                     </ThemedText>
                 </View>
+
+                {/* Push Notifications */}
+                <View style={styles.section}>
+                    <ThemedText style={styles.sectionTitle}>Push Notifications</ThemedText>
+                    <View style={[styles.settingCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
+                        <View style={styles.notifRow}>
+                            <View style={styles.notifInfo}>
+                                <ThemedText style={styles.notifEmoji}>🔥</ThemedText>
+                                <ThemedText style={styles.notifLabel}>Aggressive Signals</ThemedText>
+                            </View>
+                            <CustomToggle
+                                value={notifyAggressive}
+                                onValueChange={toggleNotifyAggressive}
+                            />
+                        </View>
+                        <View style={[styles.divider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+                        <View style={styles.notifRow}>
+                            <View style={styles.notifInfo}>
+                                <ThemedText style={styles.notifEmoji}>🛡️</ThemedText>
+                                <ThemedText style={styles.notifLabel}>Conservative Signals</ThemedText>
+                            </View>
+                            <CustomToggle
+                                value={notifyConservative}
+                                onValueChange={toggleNotifyConservative}
+                            />
+                        </View>
+                    </View>
+                </View>
             </ScrollView>
         </SafeAreaView>
     );
@@ -145,21 +229,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     content: {
+        paddingTop: 8,
         paddingBottom: 32,
-    },
-    header: {
-        paddingHorizontal: 20,
-        paddingTop: 16,
-        paddingBottom: 24,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '800',
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 14,
-        opacity: 0.6,
     },
     section: {
         paddingHorizontal: 20,
@@ -245,5 +316,36 @@ const styles = StyleSheet.create({
     activeText: {
         fontSize: 13,
         opacity: 0.6,
+    },
+    notifRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 12,
+    },
+    notifInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    notifEmoji: {
+        fontSize: 20,
+    },
+    notifLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    toggleTrack: {
+        width: 50,
+        height: 30,
+        borderRadius: 15,
+        padding: 4,
+        justifyContent: 'center',
+    },
+    toggleThumb: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#ffffff',
     },
 });
