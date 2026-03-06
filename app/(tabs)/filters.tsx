@@ -23,6 +23,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useFilter } from '@/contexts/FilterContext';
 import { CoinTier } from '@/types/coin';
 
+
 const NOTIF_STORAGE_KEY = '@notification_prefs';
 
 // Real thresholds matching the webhook-helius edge function
@@ -34,15 +35,15 @@ const TIER_THRESHOLDS: Record<CoinTier, {
     description: string;
 }> = {
     aggressive: {
-        whaleBuy: '$10K – $60K',
-        marketCap: '$200K – $5M',
-        liquidity: '$50K+',
+        whaleBuy: '$1K – $10K',
+        marketCap: '$50K – $5M',
+        liquidity: '$10K+',
         emoji: '🔥',
         description: 'Higher risk, earlier entries. Smaller caps with emerging whale interest.',
     },
     conservative: {
-        whaleBuy: '$50K+',
-        marketCap: '$3M – $30M',
+        whaleBuy: '$10K – $100K',
+        marketCap: '$1M – $30M',
         liquidity: '$150K+',
         emoji: '🛡️',
         description: 'Lower risk, established tokens. Larger caps with strong whale conviction.',
@@ -79,6 +80,7 @@ export default function FiltersScreen() {
     // Push notification preferences
     const [notifyAggressive, setNotifyAggressive] = useState(true);
     const [notifyConservative, setNotifyConservative] = useState(true);
+
 
     // Load saved notification prefs
     useEffect(() => {
@@ -348,4 +350,5 @@ const styles = StyleSheet.create({
         borderRadius: 11,
         backgroundColor: '#ffffff',
     },
+
 });

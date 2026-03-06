@@ -25,8 +25,7 @@ export function NavHeader({ onToggleTheme }: NavHeaderProps) {
     };
 
     const handleProPress = () => {
-        // TODO: Navigate to upgrade/subscription screen
-        console.log('Pro+ pressed');
+        router.push('/upgrade' as any);
     };
 
     return (

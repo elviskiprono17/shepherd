@@ -69,6 +69,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.statLabel}>Chains</ThemedText>
           </View>
         </View>
+        <ThemedText style={styles.disclaimer}>FREE Signals are 72 hours behind!</ThemedText>
 
         {/* Coin Feed */}
         <View style={styles.feedContainer}>
@@ -122,5 +123,11 @@ const styles = StyleSheet.create({
   },
   feedContainer: {
     flex: 1,
+  },
+  disclaimer: {
+    fontSize: 10,
+    opacity: 0.4,
+    textAlign: 'center',
+    marginBottom: 8,
   },
 });

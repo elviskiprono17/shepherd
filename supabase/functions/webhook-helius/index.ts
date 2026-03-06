@@ -8,16 +8,17 @@ const GOPLUS_APP_SECRET = Deno.env.get("GOPLUS_APP_SECRET") || "";
 
 // ---- Dual-Tier Thresholds ----
 const AGGRESSIVE = {
-    MIN_WHALE_BUY: 10000,
-    MAX_WHALE_BUY: 60000,
-    MIN_MARKET_CAP: 200000,
+    MIN_WHALE_BUY: 1000,
+    MAX_WHALE_BUY: 10000,
+    MIN_MARKET_CAP: 50000,
     MAX_MARKET_CAP: 5000000,
-    MIN_LIQUIDITY: 50000,
+    MIN_LIQUIDITY: 10000,
 };
 
 const CONSERVATIVE = {
-    MIN_WHALE_BUY: 50000,
-    MIN_MARKET_CAP: 3000000,
+    MIN_WHALE_BUY: 10000,
+    MAX_WHALE_BUY: 100000,
+    MIN_MARKET_CAP: 1000000,
     MAX_MARKET_CAP: 30000000,
     MIN_LIQUIDITY: 150000,
 };
@@ -109,7 +110,7 @@ async function checkGoPlus(mint: string): Promise<{ passed: boolean; data: any; 
 function determineTier(buyUsd: number, liq: number, mcap: number): string | null {
     // Conservative check first (higher quality signal)
     if (
-        buyUsd >= CONSERVATIVE.MIN_WHALE_BUY &&
+        buyUsd >= CONSERVATIVE.MIN_WHALE_BUY && buyUsd <= CONSERVATIVE.MAX_WHALE_BUY &&
         mcap >= CONSERVATIVE.MIN_MARKET_CAP && mcap <= CONSERVATIVE.MAX_MARKET_CAP &&
         liq >= CONSERVATIVE.MIN_LIQUIDITY
     ) {

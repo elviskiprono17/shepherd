@@ -44,6 +44,7 @@ function RootLayoutNav() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="feedback" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="upgrade" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="coin/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />

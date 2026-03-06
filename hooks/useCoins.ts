@@ -106,11 +106,11 @@ export function useCoins(tier?: CoinTier): UseCoinsResult {
                 query = query.eq('tier', tier);
             }
 
-            const { data, error: dbError } = await withTimeout(query, 15000);
+            const { data, error: dbError } = await withTimeout(query, 10000);
 
             if (dbError) {
                 console.warn('Supabase error:', dbError.message);
-                setError(new Error(dbError.message));
+                // Don't show error if table is just empty
                 setCoins([]);
                 return;
             }
@@ -126,7 +126,7 @@ export function useCoins(tier?: CoinTier): UseCoinsResult {
             }
         } catch (err) {
             console.warn('Fetch coins error:', err);
-            setError(err instanceof Error ? err : new Error('Failed to fetch coins'));
+            // Timeout or network error with no cached data — show empty state, not error
             setCoins([]);
         } finally {
             setLoading(false);

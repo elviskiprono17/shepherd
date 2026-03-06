@@ -5,6 +5,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '@/utils/supabase';
 import { Session, User } from '@supabase/supabase-js';
 
@@ -105,7 +106,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
         );
 
-        return () => subscription.unsubscribe();
+        // Deep link listener for OAuth redirect (backup for mobile)
+        let linkingSubscription: any = null;
+        if (Platform.OS !== 'web') {
+            const Linking = require('expo-linking');
+            linkingSubscription = Linking.addEventListener('url', async (event: { url: string }) => {
+                if (event.url && event.url.includes('auth-callback')) {
+                    console.log('Deep link received:', event.url.substring(0, 50) + '...');
+                    const QueryParams = require('expo-auth-session/build/QueryParams');
+                    const { params } = QueryParams.getQueryParams(event.url);
+                    if (params?.access_token && params?.refresh_token) {
+                        await supabase.auth.setSession({
+                            access_token: params.access_token,
+                            refresh_token: params.refresh_token,
+                        });
+                    }
+                }
+            });
+        }
+
+        return () => {
+            subscription.unsubscribe();
+            if (linkingSubscription) linkingSubscription.remove();
+        };
     }, []);
 
     // Sign in with email/password
@@ -134,20 +157,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     };
 
+    // Extract tokens from a redirect URL (hash fragment or query params)
+    const createSessionFromUrl = async (urlString: string) => {
+        try {
+            // Try expo-auth-session's QueryParams first (most reliable)
+            const QueryParams = require('expo-auth-session/build/QueryParams');
+            const { params, errorCode } = QueryParams.getQueryParams(urlString);
+            if (errorCode) {
+                console.error('OAuth error code:', errorCode);
+                return null;
+            }
+            const { access_token, refresh_token } = params;
+            if (!access_token) return null;
+
+            const { data, error } = await supabase.auth.setSession({
+                access_token,
+                refresh_token,
+            });
+            if (error) {
+                console.error('Failed to set session:', error.message);
+                return null;
+            }
+            return data.session;
+        } catch (e) {
+            console.error('Error creating session from URL:', e);
+            return null;
+        }
+    };
+
     // Sign in with OAuth (Google/Apple)
     const signInWithOAuth = async (provider: 'google' | 'apple') => {
         try {
-            // Use expo-auth-session for proper redirect URI
-            const AuthSession = require('expo-auth-session');
+            if (Platform.OS === 'web') {
+                const { error } = await supabase.auth.signInWithOAuth({
+                    provider,
+                    options: { redirectTo: window.location.origin },
+                });
+                if (error) return { error: new Error(error.message) };
+                return { error: null };
+            }
+
+            // Mobile: open browser and listen for deep link return
+            const Linking = require('expo-linking');
             const WebBrowser = require('expo-web-browser');
 
-            // Create the proper redirect URI
-            const redirectUri = AuthSession.makeRedirectUri({
-                scheme: 'shepherd',
-                path: 'auth-callback',
-            });
-
-            console.log('Redirect URI:', redirectUri);
+            const redirectUri = Linking.createURL('auth-callback');
+            console.log('OAuth redirect URI:', redirectUri);
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider,
@@ -157,55 +212,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 },
             });
 
-            if (error) {
-                return { error: new Error(error.message) };
-            }
+            if (error) return { error: new Error(error.message) };
 
             if (data?.url) {
-                const result = await WebBrowser.openAuthSessionAsync(
-                    data.url,
-                    redirectUri
-                );
-
-                console.log('OAuth result:', result);
-
-                if (result.type === 'success' && result.url) {
-                    // Extract the session from the URL
-                    const url = new URL(result.url);
-
-                    // Supabase can return tokens in hash or query params
-                    let access_token: string | null = null;
-                    let refresh_token: string | null = null;
-
-                    // Check hash first (fragment)
-                    if (url.hash) {
-                        const hashParams = new URLSearchParams(url.hash.substring(1));
-                        access_token = hashParams.get('access_token');
-                        refresh_token = hashParams.get('refresh_token');
-                    }
-
-                    // Check query params as fallback
-                    if (!access_token) {
-                        access_token = url.searchParams.get('access_token');
-                        refresh_token = url.searchParams.get('refresh_token');
-                    }
-
-                    if (access_token && refresh_token) {
-                        const { error: sessionError } = await supabase.auth.setSession({
-                            access_token,
-                            refresh_token,
-                        });
-                        if (sessionError) {
-                            return { error: new Error(sessionError.message) };
+                // Create a promise that resolves when the deep link fires
+                const sessionPromise = new Promise<void>((resolve) => {
+                    const sub = Linking.addEventListener('url', async (event: { url: string }) => {
+                        if (event.url && event.url.includes('auth-callback')) {
+                            console.log('Deep link caught, setting session...');
+                            await createSessionFromUrl(event.url);
+                            sub.remove();
+                            // Close the browser
+                            try { WebBrowser.dismissBrowser(); } catch (_) { }
+                            resolve();
                         }
-                    } else {
-                        // If we got here but no tokens, the session may already be set
-                        // Try refreshing the session
-                        await supabase.auth.refreshSession();
-                    }
-                } else if (result.type === 'cancel') {
-                    return { error: new Error('Authentication was cancelled') };
-                }
+                    });
+
+                    // Timeout after 60s to avoid hanging forever
+                    setTimeout(() => {
+                        sub.remove();
+                        resolve();
+                    }, 60000);
+                });
+
+                // Open the browser (non-blocking for deep links)
+                await WebBrowser.openBrowserAsync(data.url, {
+                    showInRecents: true,
+                    createTask: false,
+                });
+
+                // Wait for the deep link to fire
+                await sessionPromise;
             }
 
             return { error: null };

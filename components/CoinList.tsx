@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { FlatList, StyleSheet, RefreshControl, View } from 'react-native';
+import { FlatList, StyleSheet, RefreshControl, View, Image } from 'react-native';
 import { CoinCard } from './CoinCard';
 import { LoadingSkeleton } from './ui/LoadingSkeleton';
 import { ErrorState } from './ui/ErrorState';
@@ -51,7 +51,11 @@ export function CoinList({
     if (!loading && coins.length === 0) {
         return (
             <View style={styles.emptyContainer}>
-
+                <Image
+                    source={require('@/assets/images/shepherd-logo.png')}
+                    style={styles.emptyLogo}
+                    resizeMode="contain"
+                />
                 <ThemedText style={styles.emptyTitle}>Nothing to show here for now</ThemedText>
                 <ThemedText style={styles.emptySubtitle}>
                     Refresh for latest coins
@@ -93,6 +97,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 32,
+        paddingBottom: 120,
+    },
+    emptyLogo: {
+        width: 100,
+        height: 100,
+        marginBottom: 20,
+        borderRadius: 20,
     },
     emptyTitle: {
         fontSize: 18,

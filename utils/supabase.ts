@@ -27,12 +27,12 @@ const createSupabaseClient = (): SupabaseClient => {
         });
     }
 
-    // For web, use default localStorage (or no persistence during SSR)
+    // For web, use default localStorage and detect session from URL (needed for OAuth redirect)
     return createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
             autoRefreshToken: true,
             persistSession: true,
-            detectSessionInUrl: false,
+            detectSessionInUrl: true,
         },
     });
 };
